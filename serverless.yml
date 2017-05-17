@@ -1,0 +1,155 @@
+# Welcome to Serverless!
+#
+# This file is the main config file for your service.
+# It's very minimal at this point and uses default values.
+# You can always add more config options for more control.
+# We've included some commented out config examples here.
+# Just uncomment any of them to get that config option.
+#
+# For full config options, check the docs:
+#    docs.serverless.com
+#
+# Happy Coding!
+
+service: school
+
+# You can pin your service to only deploy with a specific Serverless version
+# Check out our docs for more details
+# frameworkVersion: "=X.X.X"
+
+plugins:
+  - serverless-webpack
+
+custom:
+  webpackIncludeModules: true
+  stage: ${opt:stage, self:provider.stage}
+  defaultAccountName: school
+  overriddenAccountName: ${file(./localEnv.yml):truthAccountName}
+
+provider:
+  name: aws
+  runtime: nodejs4.3
+  environment:
+    SENTRY_DSN: "https://880775a742244b5bad88cbda8e27bbe1:7f89fb0990c1458baf6cb50883eff036@sentry.io/139065"
+    LOGGLY_TOKEN: "5bc086b0-ee2c-4d47-a2fa-37e70002ac03"
+    LOGGLY_SUBDOMAIN: "school"
+    SERVICE: ${self:service}
+    STAGE: ${opt:stage, self:provider.stage}
+    REGION: ${self:provider.region}
+    SCHOOL_ACCOUNT_NAME: ${self:custom.overriddenAccountName, self:custom.defaultAccountName}
+
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:Query
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:Scan
+        - dynamodb:GetItem
+        - dynamodb:DeleteItem
+      Resource: "arn:aws:dynamodb:us-east-1:*:*"
+
+functions:
+  createCourse:
+    handler: courseHandler.createCourse
+    events:
+      - http:
+          path: courses
+          method: post
+  readCourse:
+    handler: courseHandler.readCourse
+    events:
+      - http:
+          path: courses/{courseId}
+          method: get
+  updateCourse:
+    handler: courseHandler.updateCourse
+    events:
+      - http:
+          path: courses/{courseId}
+          method: put
+  deleteCourse:
+    handler: courseHandler.deleteCourse
+    events:
+      - http:
+          path: courses/{courseId}
+          method: delete
+
+  createStudent:
+    handler: studentHandler.createStudent
+    events:
+      - http:
+          path: students
+          method: post
+  readStudent:
+    handler: studentHandler.readStudent
+    events:
+      - http:
+          path: students/{studentId}
+          method: get
+  updateStudent:
+    handler: studentHandler.updateStudent
+    events:
+      - http:
+          path: students/{studentId}
+          method: put
+  deleteStudent:
+    handler: studentHandler.deleteStudent
+    events:
+      - http:
+          path: students/{studentId}
+          method: delete
+
+  queryGraphQL:
+    handler: graphQLHandler.queryGraphQL
+    events:
+      - http:
+          path: graphql
+          method: post
+          cors:
+            origins:
+              # TODO: I think we can remove this
+              - 'http://localhost:3003'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: true
+  graphiQL:
+    handler: graphQLHandler.graphiQL
+    events:
+      - http:
+          path: graphiql
+          method: get
+
+resources:
+  Resources:
+    coursesTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: courses
+        AttributeDefinitions:
+          - AttributeName: courseId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: courseId
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 5
+          WriteCapacityUnits: 5
+
+    studentsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: students
+        AttributeDefinitions:
+          - AttributeName: studentId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: studentId
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 5
+          WriteCapacityUnits: 5
